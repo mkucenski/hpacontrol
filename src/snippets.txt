@@ -1,0 +1,423 @@
+struct stat deviceStat;
+if (stat(chDevice, &deviceStat) == 0) {
+	if (S_ISCHR(deviceStat.st_mode)) {
+		FILE* fDevice = NULL;
+		fDevice = fopen(chDevice, "r");
+		if (fDevice) {
+			if (strcmp(chCmd, "status") == 0) {
+				int bHPASupport = 0;
+				int bHPAEnabled = 0;
+				int bHPASecuritySupport = 0;
+				int bHPASecurityEnabled = 0;
+				
+				hpaSupport(fDevice, &bHPASupport, &bHPAEnabled);
+				if (bHPASupport) {
+					int iMaxAddress = 0;
+					int iNativeMaxAddress = 0;
+					
+					printf("%s: Support for HPA detected (%s)\n", chDevice, (bHPAEnabled ? "Enabled" : "Disabled"));
+					
+					readNativeMaxAddress(fDevice, &iNativeMaxAddress);
+					getMaxAddress(fDevice, &iMaxAddress);
+					printf("%s: Max Address %d, Max Native Address %d, HPA Size %d\n", chDevice, iMaxAddress, iNativeMaxAddress, iNativeMaxAddress-iMaxAddress);
+					
+					hpaSecuritySupport(fDevice, &bHPASecuritySupport, &bHPASecurityEnabled);
+					if (bHPASecuritySupport) {
+						printf("%s: Support for HPA security detected (%s)\n", chDevice, (bHPASecurityEnabled ? "Enabled" : "Disabled"));
+						
+						//TODO: Show some sort of the details on the security settings
+						
+					} else {
+						printf("%s: No support for HPA security detected\n", chDevice);
+					}
+				} else {
+					printf("%s: No support for HPA detected\n", chDevice);
+				}
+			} else if (strcmp(chCmd, "setmaxaddress") == 0) {
+				printf("Not implemented\n");
+			} else if (strcmp(chCmd, "setmaxsetpassword") == 0) {
+				printf("Not implemented\n");
+			} else if (strcmp(chCmd, "setmaxlock") == 0) {
+				printf("Not implemented\n");
+			} else if (strcmp(chCmd, "setmaxfreezelock") == 0) {
+				printf("Not implemented\n");
+			} else if (strcmp(chCmd, "setmaxunlock") == 0) {
+				printf("Not implemented\n");
+			} else {
+				fprintf(stderr, "Unknown command\n");
+				rv = EXIT_FAILURE;
+			}
+
+			if (fclose(fDevice) != 0) {
+				fprintf(stderr, "fclose: Unknown error (%d)\n", errno);
+				rv = EXIT_FAILURE;
+			}
+		} else {
+			switch(errno) { 
+				case EINVAL:
+					fprintf(stderr, "fopen: The mode provided to fopen(), fdopen(), or freopen() was invalid\n");
+					break;
+				default:
+					fprintf(stderr, "fopen: Unknown error (%d)\n", errno);
+					break;
+			}
+			rv = EXIT_FAILURE;
+		}
+	} else {
+		fprintf(stderr, "%s: Invalid device\n", chDevice);
+		rv = EXIT_FAILURE;
+	}
+} else {
+	switch(errno) { 
+		case ENOTDIR:
+			fprintf(stderr, "stat: A component of the path prefix is not a directory\n");
+			break;
+		case ENAMETOOLONG:
+			fprintf(stderr, "stat: A component of a pathname exceeded 255 characters, or an entire path name exceeded 1023 characters\n");
+			break;
+		case ENOENT:
+			fprintf(stderr, "stat: The named file does not exist\n");
+			break;
+		case EACCES:
+			fprintf(stderr, "stat: Search permission is denied for a component of the path prefix\n");
+			break;
+		case ELOOP:
+			fprintf(stderr, "stat: Too many symbolic links were encountered in translating the pathname\n");
+			break;
+		case EFAULT:
+			fprintf(stderr, "stat: sb or name points to an invalid address\n");
+		case EIO:
+			fprintf(stderr, "stat: An I/O error occurred while reading from or writing to the file system\n");
+			break;
+		default:
+			fprintf(stderr, "stat: Unknown error (%d)\n", errno);
+			break;
+	}
+	rv = EXIT_FAILURE;
+}
+
+
+
+
+	
+	
+	
+	if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+		bzero(&iocmd, sizeof(struct ata_cmd));
+
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAGPARM;
+	    
+		if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+			int bLBA48Support = 0;		
+			if (lba48Support(fdController, channel, device, &bLBA48Support) == EXIT_SUCCESS) {
+				if (bLBA48Support) {
+					*iMaxAddress = ((u_int64_t)iocmd.u.param.params[device].lba_size48_1) |
+							       ((u_int64_t)iocmd.u.param.params[device].lba_size48_2 << 16) |
+   								   ((u_int64_t)iocmd.u.param.params[device].lba_size48_3 << 32) |
+								   ((u_int64_t)iocmd.u.param.params[device].lba_size48_4 << 48);
+				} else {
+					*iMaxAddress = (u_int32_t)iocmd.u.param.params[device].lba_size_1 |
+								   ((u_int32_t)iocmd.u.param.params[device].lba_size_2 << 16);
+				}
+			} else {
+				fprintf(stderr, "Unable to determine LBA48 support status.");
+			}
+		} else {
+			perror("ioctl(\"/dev/ata\", ATAGPARM)");
+		}	
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+	}
+
+	
+	
+	
+	
+	if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+		bzero(&iocmd, sizeof(struct ata_cmd));
+
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAGPARM;
+	    
+		if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+			*p_bSupport = iocmd.u.param.params[device].support.command2 & ATA_SUPPORT_ADDRESS48;
+		} else {
+			perror("ioctl(\"/dev/ata\", ATAGPARM)");
+			rv = EXIT_FAILURE;
+		}	
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+		rv = EXIT_FAILURE;
+	}
+	
+	return rv;
+	
+	
+	
+	
+		
+	
+	if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+		bzero(&iocmd, sizeof(struct ata_cmd));
+
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAGPARM;
+	    
+		if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+			*bSupport = iocmd.u.param.params[device].support.command1 & ATA_SUPPORT_PROTECTED;
+			*bEnabled = iocmd.u.param.params[device].enabled.command1 & ATA_SUPPORT_PROTECTED;
+		} else {
+			perror("ioctl(\"/dev/ata\", ATAGPARM)");
+		}	
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+	}
+	
+	
+	
+	
+
+	if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+		bzero(&iocmd, sizeof(struct ata_cmd));
+
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAGPARM;
+	    
+		if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+			*bSupport = iocmd.u.param.params[device].support.command2 & ATA_SUPPORT_MAXSECURITY;
+			*bEnabled = iocmd.u.param.params[device].enabled.command2 & ATA_SUPPORT_MAXSECURITY;
+		} else {
+			perror("ioctl(\"/dev/ata\", ATAGPARM)");
+		}	
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+	}
+	
+	
+	
+	
+	
+		if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+		bzero(&iocmd, sizeof(struct ata_cmd));
+
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAREQUEST;
+
+		int bLBA48Support = 0;		
+		if (lba48Support(fdController, channel, device, &bLBA48Support) == EXIT_SUCCESS) {
+			if (bLBA48Support) {
+				printf("Not implemented\n");
+			} else {
+				iocmd.u.request.u.ata.command = READ_NATIVE_MAX_ADDRESS;
+			    
+				if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+				    printf("lba: %u\n", iocmd.u.request.u.ata.lba);
+				    printf("error: %d\n", iocmd.u.request.error);
+				} else {
+					perror("ioctl(\"/dev/ata\", ATAREQUEST)");
+				}	
+			}
+		} else {
+			fprintf(stderr, "Unable to determine LBA48 support status.");
+		}
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+int lba48Support(struct ata_params* pDeviceParams, int* p_bSupport) {
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) { 
+		*p_bSupport = pDeviceParams->support.command2 & ATA_SUPPORT_ADDRESS48;
+		rv = EXIT_SUCCESS;
+	} else {
+		fprintf(stderr, "Invalid device params\n");
+	}
+	
+	return rv;
+}
+
+int hpaSupport(struct ata_params* pDeviceParams, int* p_bSupport, int* p_bEnabled) { 
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) { 
+		*p_bSupport = pDeviceParams->support.command1 & ATA_SUPPORT_PROTECTED;
+		*p_bEnabled = pDeviceParams->enabled.command1 & ATA_SUPPORT_PROTECTED;
+		rv = EXIT_SUCCESS;
+	} else {
+		fprintf(stderr, "Invalid device params\n");
+	}
+	
+	return rv; 
+}
+
+int hpaSecuritySupport(struct ata_params* pDeviceParams, int* p_bSupport, int* p_bEnabled) {
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) { 
+		*p_bSupport = pDeviceParams->support.command2 & ATA_SUPPORT_MAXSECURITY;
+		*p_bEnabled = pDeviceParams->enabled.command2 & ATA_SUPPORT_MAXSECURITY;
+		rv = EXIT_SUCCESS;
+	} else {
+		fprintf(stderr, "Invalid device params\n");
+	}
+	
+	return rv; 
+}
+
+int readNativeMaxAddress(int fdController, int channel, int device, struct ata_params* pDeviceParams, unsigned long long* p_iMaxNativeAddress) {
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) {
+		int bLBA48Support = 0;
+		if (lba48Support(pDeviceParams, &bLBA48Support) == EXIT_SUCCESS) {
+			if (bLBA48Support) {
+				//TODO
+			} else {
+				if (device == 0 || device == 1) {
+					struct ata_cmd iocmd;
+					bzero(&iocmd, sizeof(struct ata_cmd));
+			
+					iocmd.channel = channel;
+					iocmd.device = device;
+					iocmd.cmd = ATAREQUEST;
+					iocmd.u.request.flags = ATA_CMD_READ;
+					iocmd.u.request.u.ata.command = READ_NATIVE_MAX_ADDRESS;
+					iocmd.u.request.timeout = 600;
+					
+					if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+						fprintf(stderr, "command=0x%02x\nfeature=0x%02x\ncount=0x%02x\nlba1=0x%02x\nlba2=0x%02x\nlba3=0x%02x\nerror=%d\ntimeout=%d\ndata=%d\ncount=%d\nflags=%d\n",
+							(int)iocmd.u.request.u.ata.command,
+							(int)iocmd.u.request.u.ata.feature,
+							(int)iocmd.u.request.u.ata.count,
+							(int)((iocmd.u.request.u.ata.lba) & 0xff),
+							(int)((iocmd.u.request.u.ata.lba>>8) & 0xff),
+							(int)((iocmd.u.request.u.ata.lba>>16) & 0xff),
+							(int)iocmd.u.request.error,
+							(int)iocmd.u.request.timeout,
+							(int)iocmd.u.request.data,
+							(int)iocmd.u.request.count,
+							(int)iocmd.u.request.flags);
+						rv = EXIT_SUCCESS;
+					} else {
+						perror("ioctl(\"/dev/ata\", ATAREQUEST)");
+					}	
+				} else {
+					fprintf(stderr, "Invalid device number\n");
+				}
+			}
+		} else {
+			fprintf(stderr, "Unable to determine LBA 48 support\n");
+		}
+	} else {
+		fprintf(stderr, "Invalid device params\n");
+	}
+	
+	return rv; 
+}
+
+int getMaxAddress(struct ata_params* pDeviceParams, unsigned long long* pMaxAddress) { 
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) {
+		int bLBA48Support = 0;
+		if (lba48Support(pDeviceParams, &bLBA48Support) == EXIT_SUCCESS) {
+			if (bLBA48Support) {
+				*pMaxAddress = 	((u_int64_t)pDeviceParams->lba_size48_1) |
+								((u_int64_t)pDeviceParams->lba_size48_2 << 16) |
+								((u_int64_t)pDeviceParams->lba_size48_3 << 32) |
+								((u_int64_t)pDeviceParams->lba_size48_4 << 48);
+			} else {
+				*pMaxAddress = 	(u_int32_t)pDeviceParams->lba_size_1 |
+								((u_int32_t)pDeviceParams->lba_size_2 << 16);
+			}
+			rv = EXIT_SUCCESS;
+		} else {
+			fprintf(stderr, "Unable to determine LBA48 support status");
+		}
+	} else {
+		fprintf(stderr, "Invalid device parameters\n");
+	}
+	
+	return rv; 
+}
+
+int setMaxAddress(int fdController, int channel, int device, struct ata_params* pDeviceParams) { 
+	int rv = EXIT_FAILURE;
+	
+	if (pDeviceParams) {
+		int bLBA48Support = 0;
+		if (lba48Support(pDeviceParams, &bLBA48Support) == EXIT_SUCCESS) {
+			if (bLBA48Support) {
+				//TODO
+			} else {
+				if (device == 0 || device == 1) {
+				} else {
+					fprintf(stderr, "Invalid device number\n");
+				}
+			}
+			rv = EXIT_SUCCESS;
+		} else {
+			fprintf(stderr, "Unable to determine LBA 48 support\n");
+		}
+	} else {
+		fprintf(stderr, "Invalid device params\n");
+	}
+	
+	return rv; 
+}
+
+void setMaxSetPassword(int fdController, int channel, int device) {
+}
+
+void setMaxLock(int fdController, int channel, int device) { 
+}
+
+void setMaxFreezeLock(int fdController, int channel, int device) {
+}
+
+void setMaxUnlock(int fdController, int channel, int device) { 
+}
+
+int getDeviceParams2(int fdController, int channel, int device, struct ata_params* pParams) {
+	int rv = EXIT_FAILURE;
+	
+	if (device == 0 || device == 1) {
+		struct ata_cmd iocmd;
+
+		bzero(&iocmd, sizeof(struct ata_cmd));
+		iocmd.channel = channel;
+		iocmd.device = device;
+		iocmd.cmd = ATAGPARM;
+		if (ioctl(fdController, IOCATA, &iocmd) != -1) {
+			*pParams = iocmd.u.param.params[device];
+			rv = EXIT_SUCCESS;
+		} else {
+			perror("ioctl(\"/dev/ata\", ATAGPARM)");
+		}
+	} else {
+		fprintf(stderr, "Invalid device number\n");
+	}
+	
+	return rv;
+}
+	
